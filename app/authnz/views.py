@@ -52,8 +52,7 @@ def user_login(user: UserLogin, db: Session = Depends(get_db)) -> SuccessRespons
             detail=trans("Incorrect username or password"),
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
-    access_token_expires = timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = authnz_utils.create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )
@@ -72,15 +71,13 @@ async def login_for_access_token(
     """
     Just used for swagger login
     """
-    user = authnz_utils.authenticate_user(
-        db, form_data.username, form_data.password)
+    user = authnz_utils.authenticate_user(db, form_data.username, form_data.password)
     if not user:
         raise CustomException(
             detail=trans("Incorrect username or password"),
             status_code=status.HTTP_401_UNAUTHORIZED,
         )
-    access_token_expires = timedelta(
-        minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token_expires = timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES)
     access_token = authnz_utils.create_access_token(
         data={"sub": user.username}, expires_delta=access_token_expires
     )

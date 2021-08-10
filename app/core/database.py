@@ -14,9 +14,7 @@ SQLALCHEMY_DATABASE_URL = (
     f"{settings.DB_HOST}:{settings.DB_PORT}/{settings.DB_NAME}"
 )
 
-engine = create_engine(
-    SQLALCHEMY_DATABASE_URL
-)
+engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base = declarative_base()
@@ -127,7 +125,8 @@ def set_fields_from_validator(db_instance, validator, fields=None):
             if isinstance(oField, RelationshipProperty):
                 if not db_instance.__refrence_context__:
                     raise Exception(
-                        "set_fields_from_validator method requires a __refrence_context__ set to the data class, with the value of __name__")
+                        "set_fields_from_validator method requires a __refrence_context__ set to the data class, with the value of __name__"
+                    )
                 fieldClass = getattr(
                     sys.modules[db_instance.__refrence_context__], oField.argument
                 )

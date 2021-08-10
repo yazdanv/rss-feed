@@ -11,6 +11,7 @@ from app.utils.i18n import trans
 
 
 class User(BaseModel):
+    __refrence_context__ = __name__
     __tablename__ = "users"
 
     username = Column(String, unique=True, index=True)
