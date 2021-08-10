@@ -1,8 +1,9 @@
+import datetime
 from app.core.config import ShowMessageType
 from enum import Enum
 import time
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 
 
 class BaseOrmModel(BaseModel):
@@ -17,8 +18,8 @@ class BaseIdModel(BaseOrmModel):
 class BaseFullModel(BaseIdModel):
     is_active: Optional[bool] = True
     is_deleted: Optional[bool] = False
-    created: Optional[int] = 0
-    updated: Optional[int] = 0
+    created: Optional[datetime.datetime] = None
+    updated: Optional[datetime.datetime] = None
 
 
 class BaseResponse(BaseOrmModel):

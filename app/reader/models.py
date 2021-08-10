@@ -1,3 +1,5 @@
+from app.utils.i18n import trans
+from app.utils.exceptions import CustomException
 from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, Table
 from sqlalchemy.orm import Session, relationship
 from sqlalchemy.sql.schema import UniqueConstraint
@@ -28,7 +30,11 @@ class Feed(BaseModel):
         "unique_name", "url", name="name_url_unique"),)
 
     def add_subscriber(self, db: Session, user: User):
-        self.subscribers.extend([user])
+        try:
+            self.subscribers.append(user)
+        except:
+            raise CustomException(detail=trans(
+                "Already subscribed to this feed"))
         self.save(db)
 
 
@@ -52,7 +58,7 @@ class ReadState(BaseModel):
 
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", backref="reads")
-    feed_entry_id = Column(Integer, ForeignKey("feeds.id"))
+    feed_entry_id = Column(Integer, ForeignKey("entries.id"))
     feed_entry = relationship("FeedEntry", backref="reads")
     is_read = Column(Boolean, default=True)
 
@@ -68,7 +74,7 @@ class Favorite(BaseModel):
 
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User", backref="favorites")
-    feed_entry_id = Column(Integer, ForeignKey("feeds.id"))
+    feed_entry_id = Column(Integer, ForeignKey("entries.id"))
     feed_entry = relationship("FeedEntry")
     is_bookmarked = Column(Boolean, default=True)
 
@@ -84,6 +90,6 @@ class Comment(BaseModel):
 
     user_id = Column(Integer, ForeignKey("users.id"))
     user = relationship("User")
-    feed_entry_id = Column(Integer, ForeignKey("feeds.id"))
+    feed_entry_id = Column(Integer, ForeignKey("entries.id"))
     feed_entry = relationship("FeedEntry", backref="comments")
     content = Column(String)

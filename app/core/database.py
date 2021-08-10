@@ -27,7 +27,8 @@ class BaseModel(Base):
     is_active = Column(Boolean, default=True)
     is_deleted = Column(Boolean, default=False)
     created = Column(DateTime(timezone=True), server_default=func.now())
-    updated = Column(DateTime(timezone=True), onupdate=func.now())
+    updated = Column(DateTime(timezone=True),
+                     server_default=func.now(), onupdate=func.now())
 
     def before_save(self, *args, **kwargs):
         pass
