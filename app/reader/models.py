@@ -22,9 +22,14 @@ class Feed(BaseModel):
     unique_name = Column(String, unique=True, index=True)
     url = Column(String)
     title = Column(String)
-    priority = Column(Integer, index=True)
+    priority = Column(Integer, default=1, index=True)
 
-    __table_args__ = (UniqueConstraint("unique_name", "url", name="name_url_unique"),)
+    __table_args__ = (UniqueConstraint(
+        "unique_name", "url", name="name_url_unique"),)
+
+    def add_subscriber(self, db: Session, user: User):
+        self.subscribers.extend([user])
+        self.save(db)
 
 
 class FeedEntry(BaseModel):
@@ -52,7 +57,8 @@ class ReadState(BaseModel):
     is_read = Column(Boolean, default=True)
 
     __table_args__ = (
-        UniqueConstraint("user_id", "feed_entry_id", name="user_entry_read_unique"),
+        UniqueConstraint("user_id", "feed_entry_id",
+                         name="user_entry_read_unique"),
     )
 
 
@@ -67,7 +73,8 @@ class Favorite(BaseModel):
     is_bookmarked = Column(Boolean, default=True)
 
     __table_args__ = (
-        UniqueConstraint("user_id", "feed_entry_id", name="user_entry_favorite_unique"),
+        UniqueConstraint("user_id", "feed_entry_id",
+                         name="user_entry_favorite_unique"),
     )
 
 

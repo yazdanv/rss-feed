@@ -12,11 +12,13 @@ class BaseOrmModel(BaseModel):
 
 class BaseIdModel(BaseOrmModel):
     id: Optional[int] = None
+
+
+class BaseFullModel(BaseIdModel):
     is_active: Optional[bool] = True
     is_deleted: Optional[bool] = False
-
-    class Config:
-        orm_mode = True
+    created: Optional[int] = 0
+    updated: Optional[int] = 0
 
 
 class BaseResponse(BaseOrmModel):
