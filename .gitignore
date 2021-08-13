@@ -3,3 +3,5 @@ env/
 .env
 uvicorn
 __pycache__/
+celerybeat-schedule
+.pytest_cache/

@@ -9,6 +9,10 @@ from app.utils.view_types import AdminView
 from app.authnz.models import User
 from app.core.database import get_db
 from app.reader.schemas import (
+    CommentListResponse,
+    CommentResponse,
+    CommentValidator,
+    FavoriteStateValidator,
     FeedEntryListResponse,
     FeedEntryValidator,
     FeedUserValidator,
@@ -16,7 +20,7 @@ from app.reader.schemas import (
     FeedListResponse,
     FeedAdminValidator,
 )
-from app.reader.models import Feed, FeedEntry
+from app.reader.models import Comment, Favorite, Feed, FeedEntry, ReadState
 
 from app.utils.schema import SuccessResponse
 from app.utils.exceptions import CustomException
@@ -38,7 +42,7 @@ class FeedAdmin(AdminView):
     model = Feed
 
     @feed_admin_router.post("/admin/feed")
-    async def create(
+    def create(
         self,
         item: FeedAdminValidator,
     ):
@@ -52,7 +56,7 @@ class FeedAdmin(AdminView):
         )
 
     @feed_admin_router.patch("/admin/feed/{id}")
-    async def edit(
+    def edit(
         self,
         id: int,
         item: FeedAdminValidator,
@@ -63,21 +67,21 @@ class FeedAdmin(AdminView):
         return self.edit_view(id, item)
 
     @feed_admin_router.get("/admin/feed/{id}")
-    async def retrieve(self, id: int):
+    def retrieve(self, id: int):
         """
         Feed Item
         """
         return self.retrieve_view(id)
 
     @feed_admin_router.delete("/admin/feed/{id}")
-    async def delete(self, id: int):
+    def delete(self, id: int):
         """
         Feed Delete
         """
         return self.delete_view(id)
 
     @feed_admin_router.get("/admin/feed")
-    async def list(self):
+    def list(self):
         """
         Feed List
         """
@@ -92,7 +96,7 @@ feed_user_router = APIRouter()
 
 
 @feed_user_router.post("/feed/subscribe")
-async def subscribe_to_feed(
+def subscribe_to_feed(
     feed_validator: FeedUserValidator,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_active_user),
@@ -102,18 +106,36 @@ async def subscribe_to_feed(
     """
     feed = feed_validator.subscribe_user(db, current_user)
     return SuccessResponse(
+        message=trans("Subscribed to feed"),
         data=FeedResponse.from_orm(feed),
-        status_code=status.HTTP_201_CREATED,
+        status_code=status.HTTP_200_OK,
     )
 
 
-@feed_user_router.get("/my_feed/")
-async def feed_list(
+@feed_user_router.post("/feed/unsubscribe")
+def unsubscribe_to_feed(
+    feed_validator: FeedUserValidator,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_active_user),
 ) -> SuccessResponse:
     """
-    Subscrible current user to a feed by url
+    Unsubscrible current user from a feed by url
+    """
+    feed = feed_validator.unsubscribe_user(db, current_user)
+    return SuccessResponse(
+        message=trans("Unsubscriber from feed"),
+        data=FeedResponse.from_orm(feed),
+        status_code=status.HTTP_200_OK,
+    )
+
+
+@feed_user_router.get("/feed/my_feed")
+def feed_list(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_active_user),
+) -> SuccessResponse:
+    """
+    Current User (Logged in user) subscribed feed list
     """
     user_feed = db.query(Feed).filter(
         Feed.subscribers.any(id=current_user.id)).all()
@@ -124,20 +146,19 @@ async def feed_list(
 
 
 @feed_user_router.get("/feed/{id}")
-async def feed_item(
+def feed_item(
     id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_active_user),
 ) -> SuccessResponse:
     """
-    Subscrible current user to a feed by url
+    Detail of feed
     """
     feed_item = db.get(Feed, id)
     if not feed_item:
         raise CustomException(detail=trans("Feed does not exist"))
     return SuccessResponse(
-        data=FeedResponse.from_user_feed(
-            db, feed=feed_item, user=current_user),
+        data=FeedResponse.for_user(db, feed=feed_item, user=current_user),
         status_code=status.HTTP_200_OK,
     )
 
@@ -157,14 +178,21 @@ class FeedEntryAdmin(AdminView):
     model = FeedEntry
 
     @feedentry_admin_router.post("/admin/feed_entry")
-    def create(self, item: FeedEntryValidator,):
+    def create(
+        self,
+        item: FeedEntryValidator,
+    ):
         """
         FeedEntry Create
         """
         return self.create_view(item)
 
     @feedentry_admin_router.patch("/admin/feed_entry/{id}")
-    def edit(self, id: int, item: FeedEntryValidator,):
+    def edit(
+        self,
+        id: int,
+        item: FeedEntryValidator,
+    ):
         """
         FeedEntry Update
         """
@@ -190,3 +218,138 @@ class FeedEntryAdmin(AdminView):
         FeedEntry List
         """
         return self.list_view()
+
+
+############################
+## FeedEntry User methods ##
+############################
+
+
+feedentry_user_router = APIRouter()
+
+
+@feedentry_user_router.post("/feed_entry/mark_unread/{feed_entry_id}")
+def mark_entry_unread(
+    feed_entry_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_active_user),
+) -> SuccessResponse:
+    """
+    Mark FeedEntry with the given feed_entry_id to unread (for current user)
+    """
+    ReadState.mark_unread(db, feed_entry_id, current_user)
+    return SuccessResponse(
+        message=trans("Set feedentry as unread"),
+        status_code=status.HTTP_200_OK,
+    )
+
+
+@feedentry_user_router.post("/feed_entry/set_favorite/{feed_entry_id}")
+def set_entry_favorite(
+    feed_entry_id: int,
+    favorite_state: FavoriteStateValidator,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_active_user),
+) -> SuccessResponse:
+    """
+    Mark FeedEntry with the given feed_entry_id to favorite (for current user)
+    """
+    message = trans("Set feedentry state to favorite")
+    if favorite_state.is_favorite:
+        Favorite.favorite(db, feed_entry_id, current_user)
+    else:
+        Favorite.unfavorite(db, feed_entry_id, current_user)
+        trans("Set feedentry state to unfavorite")
+    return SuccessResponse(
+        message=message,
+        status_code=status.HTTP_200_OK,
+    )
+
+
+@feedentry_user_router.get("/feed_entry/list/{feed_id}")
+def feed_entry_list(
+    feed_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_active_user),
+) -> SuccessResponse:
+    """
+    FeedEntry list for certain feed id
+    """
+    feed_entries = db.query(FeedEntry).filter(
+        FeedEntry.feed_id == feed_id).all()
+    return SuccessResponse(
+        data=FeedEntryListResponse.from_orm(feed_entries),
+        status_code=status.HTTP_200_OK,
+    )
+
+
+@feedentry_user_router.get("/feed_entry/{id}")
+def feed_entry_item(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_active_user),
+) -> SuccessResponse:
+    """
+    Detail of FeedEntry
+    """
+    feed_entry_item = db.get(FeedEntry, id)
+    if not feed_entry_item:
+        raise CustomException(detail=trans("FeedEntry does not exist"))
+    data = FeedEntryValidator.for_user(
+        db, feed_entry=feed_entry_item, user=current_user
+    )
+    ReadState.mark_read(db, id, current_user)
+    return SuccessResponse(
+        data=data,
+        status_code=status.HTTP_200_OK,
+    )
+
+
+@feedentry_user_router.post("/feed_entry/{feed_entry_id}/add_comment")
+def add_comment_to_entry(
+    feed_entry_id: int,
+    comment_validator: CommentValidator,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_active_user),
+) -> SuccessResponse:
+    """
+    Add Comment to FeedEntry
+    """
+    comment = comment_validator.create(db, feed_entry_id, current_user)
+    return SuccessResponse(
+        message=trans("Added new Comment"),
+        data=CommentResponse.from_orm(comment),
+        status_code=status.HTTP_200_OK,
+    )
+
+
+@feedentry_user_router.post("/feed_entry/my_comments")
+def add_comment_to_entry(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_active_user),
+) -> SuccessResponse:
+    """
+    My comments list
+    """
+    comments = db.query(Comment).filter(
+        Comment.user_id == current_user.id).all()
+    return SuccessResponse(
+        data=CommentListResponse.from_orm(comments),
+        status_code=status.HTTP_200_OK,
+    )
+
+
+@feedentry_user_router.post("/feed_entry/{id}/comments")
+def add_comment_to_entry(
+    id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_active_user),
+) -> SuccessResponse:
+    """
+    FeedEntry comments list
+    """
+    comments = db.query(Comment).filter(Comment.feed_entry_id == id).all()
+    return SuccessResponse(
+        data=CommentListResponse.from_orm(comments),
+        status_code=status.HTTP_200_OK,
+    )

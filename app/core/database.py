@@ -27,8 +27,9 @@ class BaseModel(Base):
     is_active = Column(Boolean, default=True)
     is_deleted = Column(Boolean, default=False)
     created = Column(DateTime(timezone=True), server_default=func.now())
-    updated = Column(DateTime(timezone=True),
-                     server_default=func.now(), onupdate=func.now())
+    updated = Column(
+        DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
+    )
 
     def before_save(self, *args, **kwargs):
         pass
@@ -72,10 +73,14 @@ class BaseModel(Base):
 
     def delete(self, db: Session, commit=True, *args, **kwargs):
         self.before_delete(*args, **kwargs)
+        db.delete(self)
+        db.commit()
+        self.after_delete(*args, **kwargs)
+
+    def soft_delete(self, db: Session):
         self.is_deleted = True
         db.add(self)
         db.commit()
-        self.after_delete(*args, **kwargs)
 
     @classmethod
     def list(cls, db: Session, skip: int = 0, limit: int = 100):

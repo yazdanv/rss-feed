@@ -15,10 +15,13 @@ class Settings(BaseSettings):
     REDIS_PORT = 6379
     REDIS_DB = 0
 
+    CELERY_BROKER_URL = "redis://localhost:6379"
+    CELERY_RESULT_BACKEND = "redis://localhost:6379"
+
     DB_USER = "rssreader"
     DB_PASS = "rssreaderpass"
     DB_HOST = "localhost"
-    DB_PORT = "5432"
+    DB_PORT = 5432
     DB_NAME = "rssreader"
 
     CORS_ORIGINS: list = [

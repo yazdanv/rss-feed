@@ -1,3 +1,4 @@
+from app.utils.schema import BaseOrmModel
 from typing import Optional
 from pydantic import BaseModel, AnyHttpUrl
 
@@ -32,3 +33,8 @@ class UserProfileResponse(UserProfile):
 
     class Config:
         orm_mode = True
+
+
+class UserPublicProfile(BaseOrmModel):
+    name: Optional[str] = None
+    profile_picture: Optional[AnyHttpUrl] = None
