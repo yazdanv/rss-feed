@@ -13,6 +13,7 @@ from app.reader.schemas import (
     CommentResponse,
     CommentValidator,
     FavoriteStateValidator,
+    FeedEntryListItem,
     FeedEntryListResponse,
     FeedEntryValidator,
     FeedUserValidator,
@@ -20,7 +21,7 @@ from app.reader.schemas import (
     FeedListResponse,
     FeedAdminValidator,
 )
-from app.reader.models import Comment, Favorite, Feed, FeedEntry, ReadState
+from app.reader.models import Comment, Feed, FeedEntry, UserFeedEntryState
 
 from app.utils.schema import SuccessResponse
 from app.utils.exceptions import CustomException
@@ -123,7 +124,7 @@ def unsubscribe_to_feed(
     """
     feed = feed_validator.unsubscribe_user(db, current_user)
     return SuccessResponse(
-        message=trans("Unsubscriber from feed"),
+        message=trans("Unsubscribed from feed"),
         data=FeedResponse.from_orm(feed),
         status_code=status.HTTP_200_OK,
     )
@@ -158,7 +159,8 @@ def feed_item(
     if not feed_item:
         raise CustomException(detail=trans("Feed does not exist"))
     return SuccessResponse(
-        data=FeedResponse.for_user(db, feed=feed_item, user=current_user),
+        data=FeedResponse.for_user(
+            db, feed=feed_item, user_id=current_user.id),
         status_code=status.HTTP_200_OK,
     )
 
@@ -237,7 +239,7 @@ def mark_entry_unread(
     """
     Mark FeedEntry with the given feed_entry_id to unread (for current user)
     """
-    ReadState.mark_unread(db, feed_entry_id, current_user)
+    UserFeedEntryState.mark_unread(db, feed_entry_id, current_user.id)
     return SuccessResponse(
         message=trans("Set feedentry as unread"),
         status_code=status.HTTP_200_OK,
@@ -256,10 +258,10 @@ def set_entry_favorite(
     """
     message = trans("Set feedentry state to favorite")
     if favorite_state.is_favorite:
-        Favorite.favorite(db, feed_entry_id, current_user)
+        UserFeedEntryState.favorite(db, feed_entry_id, current_user.id)
     else:
-        Favorite.unfavorite(db, feed_entry_id, current_user)
-        trans("Set feedentry state to unfavorite")
+        UserFeedEntryState.unfavorite(db, feed_entry_id, current_user.id)
+        message = trans("Set feedentry state to unfavorite")
     return SuccessResponse(
         message=message,
         status_code=status.HTTP_200_OK,
@@ -269,16 +271,19 @@ def set_entry_favorite(
 @feedentry_user_router.get("/feed_entry/list/{feed_id}")
 def feed_entry_list(
     feed_id: int,
+    index: int = 0, total: int = 10,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_active_user),
 ) -> SuccessResponse:
     """
     FeedEntry list for certain feed id
     """
-    feed_entries = db.query(FeedEntry).filter(
-        FeedEntry.feed_id == feed_id).all()
+    item_list = FeedEntryListResponse.list_for_user(
+        db, feed_id, current_user.id, index, total)
     return SuccessResponse(
-        data=FeedEntryListResponse.from_orm(feed_entries),
+        index=index,
+        total=len(item_list.__root__),
+        data=item_list,
         status_code=status.HTTP_200_OK,
     )
 
@@ -296,9 +301,9 @@ def feed_entry_item(
     if not feed_entry_item:
         raise CustomException(detail=trans("FeedEntry does not exist"))
     data = FeedEntryValidator.for_user(
-        db, feed_entry=feed_entry_item, user=current_user
+        db, feed_entry=feed_entry_item, user_id=current_user.id
     )
-    ReadState.mark_read(db, id, current_user)
+    UserFeedEntryState.mark_read(db, id, current_user.id)
     return SuccessResponse(
         data=data,
         status_code=status.HTTP_200_OK,
@@ -306,7 +311,7 @@ def feed_entry_item(
 
 
 @feedentry_user_router.post("/feed_entry/{feed_entry_id}/add_comment")
-def add_comment_to_entry(
+def add_comment_to_feed_entry(
     feed_entry_id: int,
     comment_validator: CommentValidator,
     db: Session = Depends(get_db),
@@ -323,8 +328,8 @@ def add_comment_to_entry(
     )
 
 
-@feedentry_user_router.post("/feed_entry/my_comments")
-def add_comment_to_entry(
+@feedentry_user_router.get("/feed_entry/my_comments")
+def get_my_comment_on_feed_entries(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_active_user),
 ) -> SuccessResponse:
@@ -339,8 +344,8 @@ def add_comment_to_entry(
     )
 
 
-@feedentry_user_router.post("/feed_entry/{id}/comments")
-def add_comment_to_entry(
+@feedentry_user_router.get("/feed_entry/{id}/comments")
+def get_feed_entry_comments(
     id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_active_user),

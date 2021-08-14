@@ -1,7 +1,9 @@
 .vscode
 env/
 .env
+.env_data
 uvicorn
 __pycache__/
+.pytest_cache/
 celerybeat-schedule
 .pytest_cache/

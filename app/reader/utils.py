@@ -22,3 +22,4 @@ def validate_feed_url(url: str):
     parsed_feed = feedparser.parse(resp.content)
     if parsed_feed.bozo == 1:
         raise CustomException(detail="Validation Error", errors="Feed is not valid")
+    return parsed_feed.feed.title

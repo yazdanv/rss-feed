@@ -1,4 +1,6 @@
-from app.reader.tasks import feed_indexer
+from app.reader.models import Feed, FeedEntry
+from app.core.database import SessionLocal
+from app.reader.tasks import feed_parser
 from app.reader.schemas import FeedUserValidator
 from os import name
 from app.utils.schema import SuccessResponse
@@ -7,7 +9,7 @@ from app.authnz.schemas import UserRegister
 from fastapi.testclient import TestClient
 import pytest
 
-from app.main import app
+from app.core.main import app
 from app.test_data import test_data
 
 
@@ -86,23 +88,35 @@ class TestFeed(BaseTest):
             "/feed/%d" % test_data.feed_id, headers=user_headers))
         assert data.get("url") == test_data.feed_validator_item.url
 
-    # @pytest.mark.order(22)
-    # def test_priority_decreased_on_failing_feed_retrieve(self, user_headers):
-    #     priority = self.has_data_code_200(client.get(
-    #         "/feed/%d" % test_data.feed_id, headers=user_headers)).get("priority")
-    #     feed_indexer("http://invalid.url", test_data.feed_id)
-    #     new_priority = self.has_data_code_200(client.get(
-    #         "/feed/%d" % test_data.feed_id, headers=user_headers)).get("priority")
-    #     assert priority < new_priority
+    @pytest.mark.order(22)
+    def test_priority_increase_should_succeed_on_failing_feed_retrieve(self):
+        db = SessionLocal()
+        feed = db.query(Feed).get(test_data.feed_id)
+        feed.decrease_priority(db)
+        old_priority = feed.priority
+        db.close()
 
-    # @pytest.mark.order(23)
-    # def test_priority_increased_on_successful_feed_retrieve(self, user_headers):
-    #     priority = self.has_data_code_200(client.get(
-    #         "/feed/%d" % test_data.feed_id, headers=user_headers)).get("priority")
-    #     feed_indexer(test_data.feed_validator_item.url, test_data.feed_id)
-    #     new_priority = self.has_data_code_200(client.get(
-    #         "/feed/%d" % test_data.feed_id, headers=user_headers)).get("priority")
-    #     assert priority > new_priority
+        feed_parser("https://google.com", feed.id)
+
+        db = SessionLocal()
+        feed = db.query(Feed).get(test_data.feed_id)
+        assert old_priority < feed.priority
+        db.close()
+
+    @pytest.mark.order(23)
+    def test_priority_decrease_should_succeed_on_successful_feed_retrieve(self):
+        db = SessionLocal()
+        feed = db.query(Feed).get(test_data.feed_id)
+        feed.increase_priority(db)
+        old_priority = feed.priority
+        db.close()
+
+        feed_parser(feed.url, feed.id)
+
+        db = SessionLocal()
+        feed = db.query(Feed).get(test_data.feed_id)
+        assert feed.priority < old_priority
+        db.close()
 
     @pytest.mark.order(24)
     def test_retrieve_feed_entry_list(self, user_headers):
@@ -112,7 +126,6 @@ class TestFeed(BaseTest):
         test_data.feed_entry_id = data[0].get("id")
 
     # Fetch feed entry and Check Read State after fetching the feed entry
-
     @pytest.mark.order(26)
     def test_retrieve_feed_entry(self, user_headers):
         data = self.has_data_code_200(client.get(
@@ -139,12 +152,12 @@ class TestFeed(BaseTest):
 
     # set to favorite and check
     @pytest.mark.order(26)
-    def test_feed_entry_set_favorite(self, user_headers):
+    def test_feed_entry_set_favorite_status_to_true(self, user_headers):
         self.code_200(client.post(
             "/feed_entry/set_favorite/%d" % test_data.feed_entry_id, json=test_data.set_favorite_data, headers=user_headers))
 
     @pytest.mark.order(27)
-    def test_feed_entry_check_is_favorite(self, user_headers):
+    def test_feed_entry_favorite_status_is_true(self, user_headers):
         data = self.has_data_code_200(client.get(
             "/feed_entry/%d" % test_data.feed_entry_id, headers=user_headers))
         assert data.get("is_favorite") == True
@@ -152,12 +165,12 @@ class TestFeed(BaseTest):
     # set to unfavorite and check
 
     @pytest.mark.order(28)
-    def test_feed_entry_set_unfavorite(self, user_headers):
+    def test_feed_entry_set_favorite_status_to_false(self, user_headers):
         self.code_200(client.post(
             "/feed_entry/set_favorite/%d" % test_data.feed_entry_id, json=test_data.set_unfavorite_data, headers=user_headers))
 
     @pytest.mark.order(29)
-    def test_feed_entry_check_is_unfavorite(self, user_headers):
+    def test_feed_entry_favorite_status_is_false(self, user_headers):
         data = self.has_data_code_200(client.get(
             "/feed_entry/%d" % test_data.feed_entry_id, headers=user_headers))
         assert data.get("is_favorite") == False
@@ -170,13 +183,13 @@ class TestFeed(BaseTest):
         assert data.get("content") == test_data.comment_validator_item.content
 
     @pytest.mark.order(27)
-    def test_feed_entry_comment_list(self, user_headers):
+    def test_feed_entry_comment_list_should_be_more_than_zero(self, user_headers):
         data = self.has_data_code_200(client.get(
             "/feed_entry/%d/comments" % test_data.feed_entry_id, headers=user_headers))
         assert len(data) > 0
 
     @pytest.mark.order(27)
-    def test_feed_entry_my_comment_list(self, user_headers):
+    def test_feed_entry_my_comment_list_should_be_more_than_zero(self, user_headers):
         data = self.has_data_code_200(client.get(
             "/feed_entry/my_comments", headers=user_headers))
         assert len(data) > 0

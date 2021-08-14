@@ -18,16 +18,16 @@ def get_count(q):
 
 
 @shared_task
-def feed_indexer_coordinator(priority):
+def feed_distributor(priority):
     db = SessionLocal()
-    if priority == "HIGH":
-        feeds_count = get_count(db.query(Feed).filter(Feed.priority == 0))
-    elif priority == "MEDIUM":
-        feeds_count = get_count(db.query(Feed).filter(Feed.priority == 1))
-    elif priority == "LOW":
-        feeds_count = get_count(db.query(Feed).filter(Feed.priority >= 2))
+    if priority < 3:
+        feeds_count = get_count(
+            db.query(Feed).filter(Feed.priority == priority))
+    elif priority >= 3:
+        feeds_count = get_count(
+            db.query(Feed).filter(Feed.priority >= priority))
     else:
-        raise ValueError("Proirity not provided")
+        raise ValueError("Priority not provided")
     db.close()
 
     def interval_seq(start, stop, step=1):
@@ -40,47 +40,45 @@ def feed_indexer_coordinator(priority):
 
     node_count = len(current_app.control.ping())
     group(
-        feed_url_distributor.s(priority, i, j)
+        feed_parse_allocator.s(priority, i, j)
         for i, j in interval_seq(0, feeds_count, node_count)
     ).delay()
 
 
 @shared_task
-def feed_url_distributor(priority, beg, end):
+def feed_parse_allocator(priority, beg, end):
     db = SessionLocal()
-    if priority == "HIGH":
+    if priority < 3:
         feeds = db.query(Feed).filter(
-            Feed.priority == 0).offset(beg).limit(end).all()
-    elif priority == "MEDIUM":
+            Feed.priority == priority).offset(beg).limit(end).all()
+    elif priority >= 3:
         feeds = db.query(Feed).filter(
-            Feed.priority == 1).offset(beg).limit(end).all()
-    elif priority == "LOW":
-        feeds = db.query(Feed).filter(
-            Feed.priority >= 2).offset(beg).limit(end).all()
+            Feed.priority >= priority).offset(beg).limit(end).all()
     else:
-        raise ValueError("Proirity not provided")
-    group(feed_indexer.s(feed.url, feed.id) for feed in feeds).delay()
+        raise ValueError("Priority not provided")
+    group(feed_parser.s(feed.url, feed.id) for feed in feeds).delay()
     db.close()
 
 
 @ shared_task
-def feed_indexer(url, feed_id):
+def feed_parser(url, feed_id):
     db = SessionLocal()
     feed = db.get(Feed, feed_id)
     try:
+        # Todo: add async requests
         resp = requests.get(url, timeout=2)
-        feed.increase_priority(db)
-    except Timeout:
         feed.decrease_priority(db)
+    except Timeout:
+        feed.increase_priority(db)
         return
 
     parsed = feedparser.parse(resp.content)
     # if feed is invalid, decrease priority and return the method
     if parsed.bozo == 1:
-        feed.decrease_priority(db)
+        feed.increase_priority(db)
         return
     else:
-        feed.increase_priority(db)
+        feed.decrease_priority(db)
 
     # update feed title if changed
     if feed.title is not parsed.feed.title:

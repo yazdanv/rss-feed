@@ -1,0 +1,49 @@
+version: "3"
+services:
+  rssreader:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    ports:
+      - 8081:8081
+    volumes:
+      - ./app:/app
+    depends_on:
+      - postgres
+      - redis
+
+  celery_worker:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    command: celery -A app.main.celery worker -l info -c 100
+    volumes:
+      - ./app:/app
+    depends_on:
+      - postgres
+      - redis
+
+  celry_beat:
+    build:
+      context: .
+      dockerfile: ./Dockerfile
+    command: celery -A app.main.celery beat -l info
+    volumes:
+      - ./app:/app
+    depends_on:
+      - postgres
+      - redis
+
+  redis:
+    image: redis:6.2-alpine
+
+  postgres:
+    image: postgres:13-alpine
+    volumes:
+      - rss-feed-db:/var/lib/postgresql/data
+    environment:
+      POSTGRES_USER: rssreader
+      POSTGRES_PASSWORD: rssreaderpass
+
+volumes:
+  rss-feed-db:

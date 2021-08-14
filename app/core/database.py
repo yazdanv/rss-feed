@@ -38,7 +38,8 @@ class BaseModel(Base):
         pass
 
     def save(self, db: Session, commit=True):
-        self.before_save()
+        is_created = self.id == None
+        self.before_save(is_created=is_created)
         db.add(self)
         if commit:
             try:
@@ -46,7 +47,7 @@ class BaseModel(Base):
             except Exception as e:
                 db.rollback()
                 raise e
-        self.after_save()
+        self.after_save(is_created=is_created)
 
     def set_fields(self, validated_data, fields=None):
         set_fields_from_validator(self, validated_data, fields)
