@@ -328,8 +328,9 @@ def add_comment_to_feed_entry(
     )
 
 
-@feedentry_user_router.get("/feed_entry/my_comments")
+@feedentry_user_router.get("/feed_entry/{id}/my_comments")
 def get_my_comment_on_feed_entries(
+    id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_active_user),
 ) -> SuccessResponse:
@@ -337,7 +338,7 @@ def get_my_comment_on_feed_entries(
     My comments list
     """
     comments = db.query(Comment).filter(
-        Comment.user_id == current_user.id).all()
+        Comment.user_id == current_user.id, Comment.feed_entry_id == id).all()
     return SuccessResponse(
         data=CommentListResponse.from_orm(comments),
         status_code=status.HTTP_200_OK,

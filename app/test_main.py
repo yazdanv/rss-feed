@@ -230,14 +230,16 @@ class TestFeed(BaseTest):
     @pytest.mark.order(27)
     def test_feed_entry_my_comment_list_should_be_more_than_zero(self, user_headers):
         data = self.has_data_code_200(
-            client.get("/feed_entry/my_comments", headers=user_headers)
+            client.get("/feed_entry/%d/my_comments" %
+                       test_data.feed_entry_id, headers=user_headers)
         )
+        print(data)
         assert len(data) > 0
 
     # unsubscribe from the feed
 
     @pytest.mark.order(49)
-    def test_unsubscribe_to_feed(self, user_headers):
+    def test_unsubscribe_from_feed_should_be_successful(self, user_headers):
         data = self.has_data_code_200(
             client.post(
                 "/feed/unsubscribe",

@@ -1,12 +1,12 @@
 from typing import List
 
-from app.utils.schema import BaseOrmModel, SuccessResponse
 from fastapi import Depends, status
 from sqlalchemy.orm import session
 
 from app.authnz.utils import get_admin_user
 from app.core.database import get_db
 from app.authnz.models import User
+from app.utils.schema import BaseOrmModel, SuccessResponse
 
 
 class AdminView:

@@ -194,7 +194,7 @@ class CommentResponse(BaseFullModel):
     content: str
 
 
-class CommentListItem(BaseOrmModel):
+class CommentListItem(BaseIdModel):
     feed_entry: FeedEntryListItem
     content: str
     created: datetime.datetime
