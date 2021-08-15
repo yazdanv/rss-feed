@@ -1,16 +1,23 @@
-from app.reader.tasks import feed_parser
-from sqlalchemy.sql.elements import and_, not_, or_
-from app.utils.i18n import trans
-from app.utils.exceptions import CustomException
 import datetime
-from app.authnz.schemas import UserProfile, UserPublicProfile
-from app.reader.utils import validate_feed_url
 from typing import List, Optional
 from urllib.parse import urlparse
-from pydantic.networks import AnyHttpUrl
-from sqlalchemy.orm.session import Session
 
-from app.reader.models import Comment, Feed, FeedEntry, UserFeedEntryState, UserFeedState
+from sqlalchemy.sql.elements import and_, not_, or_
+from sqlalchemy.orm.session import Session
+from pydantic.networks import AnyHttpUrl
+
+from app.utils.i18n import trans
+from app.utils.exceptions import CustomException
+from app.authnz.schemas import UserProfile, UserPublicProfile
+from app.reader.utils import validate_feed_url
+from app.reader.tasks import feed_parser
+from app.reader.models import (
+    Comment,
+    Feed,
+    FeedEntry,
+    UserFeedEntryState,
+    UserFeedState,
+)
 from app.utils.schema import BaseFullModel, BaseIdModel, BaseOrmModel
 from app.authnz.models import User
 
@@ -32,9 +39,7 @@ class FeedUserValidator(BaseOrmModel):
     def unsubscribe_user(self, db: Session, user: User):
         feed = db.query(Feed).filter(Feed.url == self.url).first()
         if not feed:
-            raise CustomException(
-                detail=trans("Feed does not exist")
-            )
+            raise CustomException(detail=trans("Feed does not exist"))
 
         feed.remove_subscriber(db, user)
 
@@ -111,11 +116,20 @@ class FeedEntryListResponse(BaseOrmModel):
 
         # construct the joined query for entry and state
         user_has_state_filter = and_(
-            UserFeedEntryState.user_id == user_id, FeedEntry.id == UserFeedEntryState.feed_entry_id)
-        filter_statement = and_(FeedEntry.feed_id == feed_id, or_(
-            user_has_state_filter, not_(FeedEntry.states.any(user_id=user_id))))
-        query = db.query(FeedEntry, UserFeedEntryState).order_by(FeedEntry.id.desc()).distinct(FeedEntry.id).filter(
-            filter_statement)
+            UserFeedEntryState.user_id == user_id,
+            FeedEntry.id == UserFeedEntryState.feed_entry_id,
+        )
+        filter_statement = and_(
+            FeedEntry.feed_id == feed_id,
+            or_(user_has_state_filter, not_(
+                FeedEntry.states.any(user_id=user_id))),
+        )
+        query = (
+            db.query(FeedEntry, UserFeedEntryState)
+            .order_by(FeedEntry.id.desc())
+            .distinct(FeedEntry.id)
+            .filter(filter_statement)
+        )
 
         # read from query and construct FeedEntryListItems
         for feed_entry, user_state in query.offset(index).limit(total).all():
@@ -123,7 +137,7 @@ class FeedEntryListResponse(BaseOrmModel):
             if feed_entry.id == user_state.feed_entry_id:
                 item.is_read = user_state.is_read
                 item.is_favorite = user_state.is_favorite
-            if (feed_state):
+            if feed_state:
                 item.is_new = feed_state.last_entry_fetch_time < feed_entry.created
             list_of_entries.append(item)
         UserFeedState.update_fetch_time(db, feed_id, user_id)

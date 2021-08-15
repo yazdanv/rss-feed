@@ -1,8 +1,8 @@
 from fastapi import APIRouter, FastAPI
+
 from app.core.database import setup_db
 from app.utils.exception_handler import add_exception_handlers
 from app.utils.middlewares import add_middlewares
-
 import app.authnz.views as authnz
 import app.reader.views as reader
 

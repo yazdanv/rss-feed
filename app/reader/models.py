@@ -1,25 +1,23 @@
 from datetime import datetime
-from operator import and_
+
+from sqlalchemy.sql.elements import and_
 from sqlalchemy.sql.expression import delete, select
 from sqlalchemy.sql.functions import func
-from sqlalchemy.sql.sqltypes import Date
-from app.utils.i18n import trans
-from app.utils.exceptions import CustomException
 from sqlalchemy import Boolean, Column, Integer, String, ForeignKey, Table, DateTime
 from sqlalchemy.orm import Session, relationship
 from sqlalchemy.sql.schema import UniqueConstraint
 
-from app.core.database import BaseModel, engine
+from app.utils.i18n import trans
+from app.utils.exceptions import CustomException
+from app.core.database import BaseModel
 from app.authnz.models import User
 
 
 user_feed_table = Table(
     "user_feed",
     BaseModel.metadata,
-    Column("user_id", Integer, ForeignKey(
-        "users.id", ondelete="CASCADE")),
-    Column("feed_id", Integer, ForeignKey(
-        "feeds.id", ondelete="CASCADE")),
+    Column("user_id", Integer, ForeignKey("users.id", ondelete="CASCADE")),
+    Column("feed_id", Integer, ForeignKey("feeds.id", ondelete="CASCADE")),
 )
 
 
@@ -45,9 +43,11 @@ class Feed(BaseModel):
 
     def remove_subscriber(self, db: Session, user: User):
         filter_statement = and_(
-            user_feed_table.c.feed_id == self.id, user_feed_table.c.user_id == user.id)
-        item = db.bind.execute(select(user_feed_table).where(
-            filter_statement)).fetchone()
+            user_feed_table.c.feed_id == self.id, user_feed_table.c.user_id == user.id
+        )
+        item = db.bind.execute(
+            select(user_feed_table).where(filter_statement)
+        ).fetchone()
         if item:
             db.bind.execute(delete(user_feed_table).where(filter_statement))
         else:
@@ -69,30 +69,24 @@ class UserFeedState(BaseModel):
     __tablename__ = "user_feed_states"
 
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    user = relationship("User",
-                        backref="feed_states")
+    user = relationship("User", backref="feed_states")
     feed_id = Column(Integer, ForeignKey("feeds.id", ondelete="CASCADE"))
     feed = relationship("Feed", backref="states")
 
     last_entry_fetch_time = Column(DateTime(timezone=True), default=func.now())
 
     __table_args__ = (
-        UniqueConstraint("user_id", "feed_id",
-                         name="user_feed_state_unique"),
+        UniqueConstraint("user_id", "feed_id", name="user_feed_state_unique"),
     )
 
-    @ classmethod
+    @classmethod
     def get_item(cls, db: Session, feed_id: int, user_id: int):
         return (
-            db.query(cls)
-            .filter(
-                cls.feed_id == feed_id,
-                cls.user_id == user_id
-            )
-            .first()
+            db.query(cls).filter(cls.feed_id == feed_id,
+                                 cls.user_id == user_id).first()
         )
 
-    @ classmethod
+    @classmethod
     def update_fetch_time(cls, db: Session, feed_id: int, user_id: int):
         feed_state = cls.get_item(db, feed_id, user_id)
         if not feed_state:
@@ -106,8 +100,7 @@ class FeedEntry(BaseModel):
     __tablename__ = "entries"
 
     feed_id = Column(Integer, ForeignKey("feeds.id", ondelete="CASCADE"))
-    feed = relationship(
-        "Feed", backref="entries")
+    feed = relationship("Feed", backref="entries")
     title = Column(String)
     subtitle = Column(String)
     link = Column(String)
@@ -122,12 +115,10 @@ class UserFeedEntryState(BaseModel):
     __tablename__ = "user_feed_entry_states"
 
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"))
-    user = relationship("User",
-                        backref="feed_entry_states")
+    user = relationship("User", backref="feed_entry_states")
     feed_entry_id = Column(Integer, ForeignKey(
         "entries.id", ondelete="CASCADE"))
-    feed_entry = relationship(
-        "FeedEntry", backref="states")
+    feed_entry = relationship("FeedEntry", backref="states")
 
     is_read = Column(Boolean, default=False)
     read_time = Column(DateTime)
@@ -135,50 +126,47 @@ class UserFeedEntryState(BaseModel):
     is_favorite = Column(Boolean, default=False)
 
     __table_args__ = (
-        UniqueConstraint("user_id", "feed_entry_id",
-                         name="user_feed_entry_state_unique"),
+        UniqueConstraint(
+            "user_id", "feed_entry_id", name="user_feed_entry_state_unique"
+        ),
     )
 
-    @ classmethod
+    @classmethod
     def get_item(cls, db: Session, feed_entry_id: int, user_id: int):
         return (
             db.query(cls)
-            .filter(
-                cls.feed_entry_id == feed_entry_id,
-                cls.user_id == user_id
-            )
+            .filter(cls.feed_entry_id == feed_entry_id, cls.user_id == user_id)
             .first()
         )
 
-    @ classmethod
+    @classmethod
     def get_or_create(cls, db: Session, feed_entry_id: int, user_id: int):
         user_state = cls.get_item(db, feed_entry_id, user_id)
         if not user_state:
-            user_state = cls(
-                feed_entry_id=feed_entry_id, user_id=user_id)
+            user_state = cls(feed_entry_id=feed_entry_id, user_id=user_id)
         return user_state
 
-    @ classmethod
+    @classmethod
     def mark_read(cls, db: Session, feed_entry_id: int, user_id: int):
         user_state = cls.get_or_create(db, feed_entry_id, user_id)
         user_state.is_read = True
         user_state.read_time = datetime.now()
         user_state.save(db)
 
-    @ classmethod
+    @classmethod
     def mark_unread(cls, db: Session, feed_entry_id: int, user_id: int):
         user_state = cls.get_item(db, feed_entry_id, user_id)
         if user_state and user_state.is_read:
             user_state.is_read = False
             user_state.save(db)
 
-    @ classmethod
+    @classmethod
     def favorite(cls, db: Session, feed_entry_id: int, user_id: int):
         user_state = cls.get_or_create(db, feed_entry_id, user_id)
         user_state.is_favorite = True
         user_state.save(db)
 
-    @ classmethod
+    @classmethod
     def unfavorite(cls, db: Session, feed_entry_id: int, user_id: int):
         user_state = cls.get_item(db, feed_entry_id, user_id)
         if user_state and user_state.is_favorite:
@@ -194,6 +182,5 @@ class Comment(BaseModel):
     user = relationship("User")
     feed_entry_id = Column(Integer, ForeignKey(
         "entries.id", ondelete="CASCADE"))
-    feed_entry = relationship(
-        "FeedEntry", backref="comments")
+    feed_entry = relationship("FeedEntry", backref="comments")
     content = Column(String)

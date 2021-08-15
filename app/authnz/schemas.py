@@ -1,6 +1,8 @@
-from app.utils.schema import BaseOrmModel
 from typing import Optional
+
 from pydantic import BaseModel, AnyHttpUrl
+
+from app.utils.schema import BaseOrmModel
 
 
 class UserRegister(BaseModel):

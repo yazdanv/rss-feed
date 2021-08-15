@@ -1,9 +1,11 @@
-import datetime
-from app.core.config import ShowMessageType
-from enum import Enum
 import time
+import datetime
+from enum import Enum
 from typing import Optional
-from pydantic import BaseModel, validator
+
+from pydantic import BaseModel
+
+from app.core.config import ShowMessageType
 
 
 class BaseOrmModel(BaseModel):

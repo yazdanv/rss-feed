@@ -1,5 +1,4 @@
 from sqlalchemy.orm import session
-import hashlib
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -9,12 +8,10 @@ from fastapi import Depends, status, Request
 
 from app.core.config import settings
 from app.core.database import SessionLocal
-from app.core.cache import CustomRedis
 from app.authnz.schemas import TokenData
 from app.authnz.models import User
 from app.utils.exceptions import CustomException
 from app.utils.i18n import trans
-from app.utils.utils import generate_random_string
 
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")

@@ -1,9 +1,14 @@
-# RssFeeder Backend
-    A backend server for rss reader with python, FastAPI
+# RssFeed Backend
+    A backend server for rss feeds with python, FastAPI
+
+## Run Using Docker
+    docker-compose up -d
+
+## Test Using pytest
+    pytest -v
 
 ## Run server
-
-run server => uvicorn app.main:app --reload --host 0.0.0.0 --port 8007
+    uvicorn app.main:app --reload --host 0.0.0.0 --port 8007
 
 ## Update Requirements
 
@@ -15,6 +20,8 @@ run server => uvicorn app.main:app --reload --host 0.0.0.0 --port 8007
 Try black project before every commit use it like:
 
 black path-to-dir-or-file for example => black .
+
+
 
 ## Translation
 

@@ -1,4 +1,5 @@
 import sys
+
 from sqlalchemy import create_engine
 from sqlalchemy import Boolean, Column, Integer, DateTime
 from sqlalchemy.ext.declarative import declarative_base

@@ -1,14 +1,15 @@
-from sqlalchemy.sql.functions import func
-from app.reader.models import Feed, FeedEntry
-from app.core.database import SessionLocal, setup_db
 import time
 from datetime import datetime
 
-import pytz
 import requests
+import pytz
 import feedparser
 from requests.exceptions import Timeout
 from celery import group, shared_task, current_app
+from sqlalchemy.sql.functions import func
+
+from app.reader.models import Feed, FeedEntry
+from app.core.database import SessionLocal
 
 
 def get_count(q):
@@ -49,18 +50,28 @@ def feed_distributor(priority):
 def feed_parse_allocator(priority, beg, end):
     db = SessionLocal()
     if priority < 3:
-        feeds = db.query(Feed).filter(
-            Feed.priority == priority).offset(beg).limit(end).all()
+        feeds = (
+            db.query(Feed)
+            .filter(Feed.priority == priority)
+            .offset(beg)
+            .limit(end)
+            .all()
+        )
     elif priority >= 3:
-        feeds = db.query(Feed).filter(
-            Feed.priority >= priority).offset(beg).limit(end).all()
+        feeds = (
+            db.query(Feed)
+            .filter(Feed.priority >= priority)
+            .offset(beg)
+            .limit(end)
+            .all()
+        )
     else:
         raise ValueError("Priority not provided")
     group(feed_parser.s(feed.url, feed.id) for feed in feeds).delay()
     db.close()
 
 
-@ shared_task
+@shared_task
 def feed_parser(url, feed_id):
     db = SessionLocal()
     feed = db.get(Feed, feed_id)

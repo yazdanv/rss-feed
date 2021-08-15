@@ -1,19 +1,21 @@
-from app.authnz.utils import get_active_user
 from fastapi import Depends, APIRouter, status
 from fastapi_utils.cbv import cbv
 from fastapi_utils.inferring_router import InferringRouter
 from sqlalchemy.orm.session import Session
 from sqlalchemy.sql.functions import count
 
+from app.core.database import get_db
+from app.utils.schema import SuccessResponse
+from app.utils.exceptions import CustomException
+from app.utils.i18n import trans
+from app.authnz.utils import get_active_user
 from app.utils.view_types import AdminView
 from app.authnz.models import User
-from app.core.database import get_db
 from app.reader.schemas import (
     CommentListResponse,
     CommentResponse,
     CommentValidator,
     FavoriteStateValidator,
-    FeedEntryListItem,
     FeedEntryListResponse,
     FeedEntryValidator,
     FeedUserValidator,
@@ -22,10 +24,6 @@ from app.reader.schemas import (
     FeedAdminValidator,
 )
 from app.reader.models import Comment, Feed, FeedEntry, UserFeedEntryState
-
-from app.utils.schema import SuccessResponse
-from app.utils.exceptions import CustomException
-from app.utils.i18n import trans
 
 
 ############################
@@ -271,7 +269,8 @@ def set_entry_favorite(
 @feedentry_user_router.get("/feed_entry/list/{feed_id}")
 def feed_entry_list(
     feed_id: int,
-    index: int = 0, total: int = 10,
+    index: int = 0,
+    total: int = 10,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_active_user),
 ) -> SuccessResponse:
@@ -279,7 +278,8 @@ def feed_entry_list(
     FeedEntry list for certain feed id
     """
     item_list = FeedEntryListResponse.list_for_user(
-        db, feed_id, current_user.id, index, total)
+        db, feed_id, current_user.id, index, total
+    )
     return SuccessResponse(
         index=index,
         total=len(item_list.__root__),
