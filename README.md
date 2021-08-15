@@ -14,9 +14,9 @@ services used by this backend (celery_worker, celery_beat, rssfeed)
 
 ## Run server manually
     uvicorn app.main:app --reload --host 0.0.0.0 --port 8081
-## you also need to run the celery worker
+### you also need to run the celery worker
     celery -A app.main.celery worker -l info -c 100
-## and the celery beat
+### and the celery beat
     celery -A app.main.celery beat -l info
 
 
