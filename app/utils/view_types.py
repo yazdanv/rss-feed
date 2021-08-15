@@ -21,12 +21,14 @@ class AdminView:
 
     def create_view(self, input_payload):
         return SuccessResponse(
-            data=self.serializer.from_orm(self.model.create(self.db, input_payload)),
+            data=self.serializer.from_orm(
+                self.model.create(self.db, input_payload)),
             status_code=status.HTTP_201_CREATED,
         )
 
     def edit_view(self, id, input_payload):
-        db_item = self.db.query(self.model).get(id).update(self.db, input_payload)
+        db_item = self.db.query(self.model).get(
+            id).update(self.db, input_payload)
         print(db_item)
         return SuccessResponse(data=self.serializer.from_orm(db_item))
 

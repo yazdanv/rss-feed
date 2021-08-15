@@ -1,13 +1,9 @@
-from sqlalchemy import Boolean, Column, Integer, String
-from sqlalchemy import func
+from sqlalchemy import Boolean, Column, String
 from sqlalchemy.orm import Session
-from sqlalchemy.sql.expression import true
 
 from app.authnz.schemas import UserRegister, UserProfile
 from app.authnz.hashers import make_password
 from app.core.database import BaseModel
-from app.utils.exceptions import CustomException
-from app.utils.i18n import trans
 
 
 class User(BaseModel):

@@ -1,6 +1,5 @@
 import datetime
 from typing import List, Optional
-from urllib.parse import urlparse
 
 from sqlalchemy.sql.elements import and_, not_, or_
 from sqlalchemy.orm.session import Session
@@ -8,7 +7,7 @@ from pydantic.networks import AnyHttpUrl
 
 from app.utils.i18n import trans
 from app.utils.exceptions import CustomException
-from app.authnz.schemas import UserProfile, UserPublicProfile
+from app.authnz.schemas import UserPublicProfile
 from app.reader.utils import validate_feed_url
 from app.reader.tasks import feed_parser
 from app.reader.models import (

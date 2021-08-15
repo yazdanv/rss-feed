@@ -1,4 +1,3 @@
-from sqlalchemy.orm import session
 from datetime import datetime, timedelta
 from typing import Optional
 

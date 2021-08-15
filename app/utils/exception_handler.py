@@ -27,10 +27,12 @@ def add_exception_handlers(app):
 
     @app.exception_handler(HTTPException)
     async def custom_exception_handler(request, exc):
-        content = ErrorResponse(message=exc.detail, status_code=exc.status_code)
+        content = ErrorResponse(
+            message=exc.detail, status_code=exc.status_code)
         return JSONResponse(status_code=content.status_code, content=content.dict())
 
     @app.exception_handler(starHTTPException)
     async def custom_exception_handler(request, exc):
-        content = ErrorResponse(message=exc.detail, status_code=exc.status_code)
+        content = ErrorResponse(
+            message=exc.detail, status_code=exc.status_code)
         return JSONResponse(status_code=content.status_code, content=content.dict())
