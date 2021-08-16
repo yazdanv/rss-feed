@@ -49,7 +49,7 @@ class FeedAdmin(AdminView):
         Feed Create
         """
         feed = item.create_feed(self.db)
-        SuccessResponse(
+        return SuccessResponse(
             data=self.serializer.from_orm(feed),
             status_code=status.HTTP_201_CREATED,
         )
